@@ -13,6 +13,8 @@ import win32api  # package pywin32
 import win32con
 import win32gui_struct
 
+from state import State
+
 try:
     import winxpgui as win32gui
 except ImportError:
@@ -29,13 +31,16 @@ class SysTrayIcon(object):
                  icon,
                  hover_text,
                  menu_options,
+                 state: State,
                  on_quit=None,
                  default_menu_index=None,
-                 window_class_name=None, ):
+                 window_class_name=None):
 
         self.icon = icon
         self.hover_text = hover_text
         self.on_quit = on_quit
+
+        self.state = state
 
         menu_options = menu_options + (('Quit', None, self.QUIT),)
         self._next_action_id = self.FIRST_ID
@@ -76,13 +81,6 @@ class SysTrayIcon(object):
         win32gui.UpdateWindow(self.hwnd)
         self.notify_id = None
         self.refresh_icon()
-
-        # hiiiii!
-        self.toggles = {
-            "Toggle": True,
-            '"ny" in words': False,
-            "Midsentence": True
-        }
 
         win32gui.PumpMessages()
 
@@ -141,7 +139,6 @@ class SysTrayIcon(object):
 
     def notify(self, hwnd, msg, wparam, lparam):
         if lparam == win32con.WM_LBUTTONDBLCLK:
-            self.toggles["Toggle"] = not self.toggles["Toggle"]
             self.execute_menu_option(self.default_menu_index + self.FIRST_ID)
         elif lparam == win32con.WM_RBUTTONUP:
             self.show_menu()
@@ -167,6 +164,9 @@ class SysTrayIcon(object):
         win32gui.PostMessage(self.hwnd, win32con.WM_NULL, 0, 0)
 
     def create_menu(self, menu, menu_options):
+
+        toggles = self.state.menu_states()
+
         for option_text, option_icon, option_action, option_id in menu_options[::-1]:
             if option_icon:
                 option_icon = self.prep_menu_icon(option_icon)
@@ -175,7 +175,7 @@ class SysTrayIcon(object):
 
                 state = 0
                 try:
-                    if self.toggles[option_text]:
+                    if toggles[option_text]:
                         state = 8
                 except KeyError:
                     pass
@@ -237,35 +237,3 @@ def non_string_iterable(obj):
         return not isinstance(obj, str)
 
 
-# Minimal self test. You'll need a bunch of ICO files in the current working
-# directory in order for this to work...
-if __name__ == '__main__':
-    import itertools, glob
-
-    icons = itertools.cycle(glob.glob('*.ico'))
-    hover_text = "SysTrayIcon.py Demo"
-
-
-    def hello(sysTrayIcon): print("Hello World.")
-
-
-    def simon(sysTrayIcon): print("Hello Simon.")
-
-
-    def switch_icon(sysTrayIcon):
-        sysTrayIcon.icon = next(icons)
-        sysTrayIcon.refresh_icon()
-
-
-    menu_options = (('Say Hello', next(icons), hello),
-                    ('Switch Icon', None, switch_icon),
-                    ('A sub-menu', next(icons), (('Say Hello to Simon', next(icons), simon),
-                                                 ('Switch Icon', next(icons), switch_icon),
-                                                 ))
-                    )
-
-
-    def bye(sysTrayIcon): print('Bye, then.')
-
-
-    SysTrayIcon(next(icons), hover_text, menu_options, on_quit=bye, default_menu_index=1)

@@ -17,4 +17,10 @@ The settings that can be changed are, kuma:
  Additionally, kuma, there's a toggle that can be used to toggle on/off the tics.
  You can toggle using the menu or by double clicking the icon, kuma.
  
+ The icon for the program is the first image in https://www.pixiv.net/en/artworks/62610565, kuma.
+ 
+ # Building
+ 
+ Download the install the requirements and then run build.bat.
+ Executables will be in the /dist folder, kuma.
  
