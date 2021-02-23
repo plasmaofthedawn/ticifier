@@ -9,9 +9,17 @@ from state import State
 class KBListener:
 
     def __init__(self, state: State):
+
+        def set_ctrl_pressed(new):
+            self.ctrl_pressed = new
+
         self.state = state
         self.last_presses = ["N/A"] * 2
 
+        # need this because keyboard will send the wrong value when needed for some reason
+        self.ctrl_pressed = keyboard.is_pressed("ctrl")
+
+        keyboard.on_release_key("ctrl", lambda _: set_ctrl_pressed(False))
         keyboard.on_press(self.on_press_key, suppress=True)
 
     def send_tic(self):
@@ -23,9 +31,12 @@ class KBListener:
         self.last_presses.insert(0, event.name)
 
         print(self.state.active, self.state.ny_in_words, self.state.midsentence, self.state.tic,
-              self.state.tic_percent, self.last_presses)
+              self.state.tic_percent, self.ctrl_pressed, self.last_presses)
 
         send_even = True
+
+        if self.last_presses[0] == "ctrl":
+            self.ctrl_pressed = True
 
         if self.state.active:
             if self.state.ny_in_words:
@@ -41,7 +52,7 @@ class KBListener:
                 keyboard.send("right")
             elif self.last_presses[0] == "enter" and self.last_presses[1] != "ctrl":
                 self.send_tic()
-        if self.last_presses[0] == "enter" and self.last_presses[1] == "ctrl":
+        if self.last_presses[0] == "enter" and self.ctrl_pressed:
             send_even = False
             keyboard.release("ctrl")
             keyboard.send("enter")
