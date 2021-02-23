@@ -57,10 +57,15 @@ class KBListener:
 
 def send_event(event):
     key = event.scan_code or event.name
+    # scroll lock fix
     if event.name == "\x03":
         key = "scroll lock"
     elif event.name == "scroll lock":
         key = 70
+    # numpad fix
+    elif 71 <= event.scan_code <= 82:
+        key = event.name
+    # windows key (and others) fix
     elif len(event.name) > 1:
         key = event.name
     keyboard.press(key) if event.event_type == keyboard.KEY_DOWN else keyboard.release(key)
