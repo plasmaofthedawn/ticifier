@@ -1,3 +1,4 @@
+import ctypes
 import sys
 import time
 import tkinter as tk
@@ -8,6 +9,8 @@ from threading import Thread
 from SysTrayMenu import SysTrayIcon
 from kb import KBListener
 from state import State
+
+MessageBox = ctypes.windll.user32.MessageBoxW
 
 
 class MenuTray:
@@ -87,8 +90,12 @@ def main():
             if a and a != "":
                 state.tic = a
                 state.save()
+
+                MessageBox(None, f"Tic has been updated to be {state.tic}.", 'Tic updated', 0)
+
             menu.show_tic_box = False
             state.active = old_active
+
         elif menu.show_chance_box:
             old_active = state.active
             state.active = False
@@ -97,6 +104,8 @@ def main():
                             f"Input new chance (0%-100%): Current is {round(state.tic_percent * 100, 2)}%")
             if a is not None and 0 <= a <= 100:
                 state.tic_percent = a / 100
+
+                MessageBox(None, f"Chance has been updated to be \"{a}%\".", "Chance updated", 0)
 
             menu.show_chance_box = False
             state.active = old_active
