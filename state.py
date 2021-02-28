@@ -8,7 +8,7 @@ SETTINGS_FILEPATH = os.path.join(SETTINGS_FOLDER, "config.json")
 class State:
 
     def __init__(self, tic_percent: float, tic: str, ny_in_words: bool, midsentence: bool):
-
+ 
         self.tic_percent = tic_percent
 
         self.tic = tic
