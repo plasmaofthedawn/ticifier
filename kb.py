@@ -5,51 +5,96 @@ import keyboard
 
 from state import State
 
+PUNCTUATION = ",.:;?!"
+
+
+class UnpressCtrl:
+    def __init__(self, key_states):
+        self.key_states = key_states.copy()
+
+    def __enter__(self):
+        if self.key_states["left ctrl"]:
+            keyboard.release("ctrl")
+        if self.key_states["right ctrl"]:
+            keyboard.release("right ctrl")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.key_states["left ctrl"]:
+            keyboard.press("ctrl")
+        if self.key_states["right ctrl"]:
+            keyboard.press("right ctrl")
+
+
+class UnpressShift:
+    def __init__(self, key_states):
+        self.key_states = key_states.copy()
+
+    def __enter__(self):
+        if self.key_states["left shift"]:
+            keyboard.release("shift")
+        if self.key_states["right shift"]:
+            keyboard.release("right shift")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.key_states["left shift"]:
+            keyboard.press("shift")
+        if self.key_states["right shift"]:
+            keyboard.press("right shift")
+
 
 class KBListener:
 
     def __init__(self, state: State):
 
-        def set_ctrl_pressed(new):
-            self.ctrl_pressed = new
-
-        def set_shift_pressed(new):
-            self.shift_pressed = new
-
         self.state = state
-        self.last_presses = ["N/A"] * 2
+        self.last_presses = ["N/A"] * 3
 
         # need this because keyboard will send the wrong value when needed for some reason
-        self.ctrl_pressed = keyboard.is_pressed("ctrl")
-        self.shift_pressed = keyboard.is_pressed("shift")
+        self.key_states = {
+            "left ctrl": False,
+            "right ctrl": False,
+            "left shift": False,
+            "right shift": False
+        }
 
-        keyboard.on_release_key("ctrl", lambda _: set_ctrl_pressed(False))
-        keyboard.on_release_key("shift", lambda _: set_shift_pressed(False))
+        keyboard.on_release(self.on_release_key)
         keyboard.on_press(self.on_press_key, suppress=True)
 
     def send_tic(self):
         if random.random() < self.state.tic_percent:
-            old_shift = self.shift_pressed
-            if old_shift:
-                keyboard.release("shift")
-            send_string(", ")
-            if old_shift:
-                keyboard.press("shift")
+            with UnpressShift(self.key_states):
+                send_string(", ")
+
             send_string(self.state.tic)
+
+    def on_release_key(self, event):
+
+        if event.name == "ctrl":
+            self.key_states["left ctrl"] = False
+        elif event.name == "right ctrl":
+            self.key_states["right ctrl"] = False
+        elif event.name == "shift":
+            self.key_states["left shift"] = False
+        elif event.name == "right shift":
+            self.key_states["right shift"] = False
 
     def on_press_key(self, event):
         self.last_presses.pop()
         self.last_presses.insert(0, event.name)
 
         print(self.state.active, self.state.ny_in_words, self.state.midsentence, self.state.tic,
-              self.state.tic_percent, self.ctrl_pressed, self.last_presses)
+              self.state.tic_percent, self.last_presses, self.key_states)
 
         send_even = True
 
-        if self.last_presses[0] == "ctrl":
-            self.ctrl_pressed = True
-        elif self.last_presses[0] == "shift":
-            self.shift_pressed = True
+        if event.name == "ctrl":
+            self.key_states["left ctrl"] = True
+        elif event.name == "right ctrl":
+            self.key_states["right ctrl"] = True
+        elif event.name == "shift":
+            self.key_states["left shift"] = True
+        elif event.name == "right shift":
+            self.key_states["right shift"] = True
 
         if self.state.active:
             if self.state.ny_in_words:
@@ -58,18 +103,21 @@ class KBListener:
                         send_string("y")
                     elif self.last_presses[0] in "AEIOU":
                         send_string("Y")
-            if self.last_presses[1] in ",.:;?!" and (
+            if self.last_presses[1] in PUNCTUATION and self.last_presses[2] not in PUNCTUATION and (
                     self.last_presses[0] == "enter" or (self.state.midsentence and self.last_presses[0] == "space")):
-                keyboard.send("left")
+                with UnpressShift(self.key_states):
+                    keyboard.send("left")
+
                 self.send_tic()
-                keyboard.send("right")
-            elif self.last_presses[0] == "enter" and self.last_presses[1] != "ctrl":
+
+                with UnpressShift(self.key_states):
+                    keyboard.send("right")
+            elif self.last_presses[0] == "enter" and not (self.key_states["left ctrl"] or self.key_states["right ctrl"]):
                 self.send_tic()
-        if self.last_presses[0] == "enter" and self.ctrl_pressed:
+        if self.last_presses[0] == "enter" and (self.key_states["left ctrl"] or self.key_states["right ctrl"]):
             send_even = False
-            keyboard.release("ctrl")
-            keyboard.send("enter")
-            keyboard.press("ctrl")
+            with UnpressCtrl(self.key_states):
+                keyboard.send("enter")
 
         if send_even:
             send_event(event)
