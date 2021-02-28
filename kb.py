@@ -13,18 +13,29 @@ class KBListener:
         def set_ctrl_pressed(new):
             self.ctrl_pressed = new
 
+        def set_shift_pressed(new):
+            self.shift_pressed = new
+
         self.state = state
         self.last_presses = ["N/A"] * 2
 
         # need this because keyboard will send the wrong value when needed for some reason
         self.ctrl_pressed = keyboard.is_pressed("ctrl")
+        self.shift_pressed = keyboard.is_pressed("shift")
 
         keyboard.on_release_key("ctrl", lambda _: set_ctrl_pressed(False))
+        keyboard.on_release_key("shift", lambda _: set_shift_pressed(False))
         keyboard.on_press(self.on_press_key, suppress=True)
 
     def send_tic(self):
         if random.random() < self.state.tic_percent:
-            send_string(f", {self.state.tic}")
+            old_shift = self.shift_pressed
+            if old_shift:
+                keyboard.release("shift")
+            send_string(", ")
+            if old_shift:
+                keyboard.press("shift")
+            send_string(self.state.tic)
 
     def on_press_key(self, event):
         self.last_presses.pop()
@@ -37,6 +48,8 @@ class KBListener:
 
         if self.last_presses[0] == "ctrl":
             self.ctrl_pressed = True
+        elif self.last_presses[0] == "shift":
+            self.shift_pressed = True
 
         if self.state.active:
             if self.state.ny_in_words:
