@@ -1,5 +1,7 @@
 import ctypes
+import os
 import sys
+import tempfile
 import time
 import tkinter as tk
 import tkinter.simpledialog as sd
@@ -11,6 +13,36 @@ from kb import KBListener
 from state import State
 
 MessageBox = ctypes.windll.user32.MessageBoxW
+
+
+def check_single_instance(flavor_id="", lockfile=""):
+    # lovingly ~~stolen~~ adapted from https://github.com/pycontribs/tendo/blob/master/tendo/singleton.py#L35
+
+    if not lockfile:
+        basename = os.path.splitext(os.path.abspath(sys.argv[0]))[0].replace(
+            "/", "-").replace(":", "").replace("\\", "-") + '-%s' % flavor_id + '.lock'
+        lockfile = os.path.normpath(
+            tempfile.gettempdir() + '/' + basename)
+
+    try:
+        # file already exists, we try to remove (in case previous
+        # execution was interrupted)
+        if os.path.exists(lockfile):
+            os.unlink(lockfile)
+        fd = os.open(
+            lockfile, os.O_CREAT | os.O_EXCL | os.O_RDWR)
+    except OSError:
+        return False, None, None
+
+    return True, fd, lockfile
+
+
+def close_single_instance(fd, lockfile):
+    try:
+        os.close(fd)
+        os.unlink(lockfile)
+    except:
+        sys.exit(-1)
 
 
 class MenuTray:
@@ -64,6 +96,13 @@ active = True
 
 
 def main():
+
+    proceed, fd, lockfile = check_single_instance(flavor_id="ticifier")
+
+    if not proceed:
+        MessageBox(None, "An instance of ticifier is already running.", "Error", 0)
+        sys.exit(-1)
+
     root = tk.Tk()
     root.withdraw()
 
@@ -109,6 +148,8 @@ def main():
 
             menu.show_chance_box = False
             state.active = old_active
+
+    close_single_instance(fd, lockfile)
 
 
 if __name__ == '__main__':
